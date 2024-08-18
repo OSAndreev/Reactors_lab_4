@@ -1,49 +1,43 @@
 package Reactors;
 
+import java.util.HashMap;
+
 public class Reactor {
+    private String name;
     private String type;
-    private String reactorClass;
-    private Double burnup;
-    private Double electricalCapacity;
-    private Double enrichment;
-    private Double firstLoad;
-    private Double efficiency;
-    private Integer lifeTime;
-    private Double thermalCapacity;
-    private String source;
+    private  String country;
+    private  String region;
+    private String operator;
+    private int burnup;
+    private int thermalCapacity;
+    private int firstGridConnection;
+    private HashMap<Integer, Double> loadFactorPerYear;
+
+    private HashMap<Integer, Double> consumptionPerYear;
 
     public Reactor(
-            String type, String reactorClass, Double burnup,
-            Double efficiency, Double enrichment, Double thermalCapacity,
-            Double electricalCapacity, Integer lifeTime, Double firstLoad,
-            String source
+            String reactorName, String type, String country, String region,
+            String operator, int burnup, int thermalCapacity, int firstGridConnection,
+            HashMap<Integer, Double> loadFactorPerYear
     ) {
+        this.name = reactorName;
         this.type = type;
-        this.reactorClass = reactorClass;
+        this.country = country;
+        this.region = region;
+        this.operator = operator;
         this.burnup = burnup;
-        this.electricalCapacity = electricalCapacity;
-        this.enrichment = enrichment;
-        this.firstLoad = firstLoad;
-        this.efficiency = efficiency;
-        this.lifeTime = lifeTime;
         this.thermalCapacity = thermalCapacity;
-        this.source = source;
+        this.firstGridConnection = firstGridConnection;
+        this.loadFactorPerYear = loadFactorPerYear;
+        this.consumptionPerYear = new HashMap<Integer, Double>();
     }
 
-    @Override
-    public String toString() {
-        return reactorClass;
-    }
 
     public String getDetailedDescription() {
-        return "Класс реактора: " + reactorClass + "\n" +
+        return "Имя реактора: " + name + "\n" +
                 "Выгорание: " + burnup + "\n" +
-                "Эффективность: " + efficiency + "\n" +
-                "Обогащение: " + enrichment + "\n" +
-                "Тепловая мощность: " + thermalCapacity + "\n" +
-                "Электрическая мощность: " + electricalCapacity + "\n" +
-                "Срок службы: " + lifeTime + "\n" +
-                "Первая загрузка: " + firstLoad + "\n" +
-                "Источник: " + source;
+                "Тип: " + type + "\n" +
+                "Тепловая мощность: " + thermalCapacity + "\n"
+               ;
     }
 }
