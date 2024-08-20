@@ -1,115 +1,168 @@
-import Reactors.Reactor;
-import Reactors.ReactorsOwner;
 
+import ReactorImport.DBReactorsImporter;
+import Reactors.ReactorHolder;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreePath;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import javax.swing.table.DefaultTableModel;
 import java.io.File;
+import java.net.URISyntaxException;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
-import static ReactorImport.UniversalReactorImporter.createImporterChain;
 
-public class MainWindow extends JFrame {
+public class MainWindow {
 
-    private JButton importBtn;
-    private JPanel mainPanel;
-    private JTree reactorsJTree;
-    private ReactorsOwner reactorsOwner = new ReactorsOwner();
+    private ReactorHolder reactorHolder = new ReactorHolder();
+    private DBReactorsImporter reactorsImporter = null;
 
-    public MainWindow() {
-        mainPanel = new JPanel();
-        reactorsJTree = new JTree();
-        importBtn = new JButton("Импортировать");
-
-        addComponentsListeners();
-
-        DefaultTreeModel treeModel = (DefaultTreeModel) reactorsJTree.getModel();
-        DefaultMutableTreeNode root = new DefaultMutableTreeNode("Реакторы");
-        treeModel.setRoot(root);
-
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.add(importBtn);
-        mainPanel.add(new JScrollPane(reactorsJTree));
-
-        setContentPane(mainPanel);
-        setTitle("Reactors");
-        setSize(500, 500);
-        setLocationRelativeTo(null);
-        setVisible(true);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    }
-
-    private void addComponentsListeners() {
-        importBtn.addActionListener(new ActionListener() {
+    public void ShowFrame() throws URISyntaxException, ClassNotFoundException {
+        JFrame frame = new JFrame("PRIS");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        JPanel panel = new JPanel();
+        JButton selectFileButton = new JButton("Выбрать файл");
+        JButton countryButton = new JButton("Агрегация по странам");
+        JButton operatorButton = new JButton("Агрегация по операторам");
+        JButton regionButton = new JButton("Агрегация по региона");
+        countryButton.setEnabled(false);
+        operatorButton.setEnabled(false);
+        regionButton.setEnabled(false);
+        selectFileButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 JFileChooser fileChooser = new JFileChooser();
-                FileNameExtensionFilter filter = new FileNameExtensionFilter(
-                        "Файлы .yaml / .xml / .json", "yaml", "xml", "json");
+                try {
+                    fileChooser = new JFileChooser(new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath()).getParentFile());
+                } catch (URISyntaxException ex) {
+                    throw new RuntimeException(ex);
+                }
+                fileChooser.setDialogTitle("Выберите файл SQLite");
+                FileNameExtensionFilter filter = new FileNameExtensionFilter("SQLite Database (*.sqlite, *.db)", "sqlite", "db");
                 fileChooser.setFileFilter(filter);
-                fileChooser.setCurrentDirectory(new File("./"));
-
-                int result = fileChooser.showOpenDialog(null);
-                if (result == JFileChooser.APPROVE_OPTION) {
-                    File file = fileChooser.getSelectedFile();
-
-                    if (!(file.getName().toLowerCase().endsWith(".xml") ||
-                            file.getName().toLowerCase().endsWith(".yaml") ||
-                            file.getName().toLowerCase().endsWith(".json"))) {
-                        JOptionPane.showMessageDialog(
-                                null, "Выберите файл формата .yaml / .xml / .json", "Ошибка",
-                                JOptionPane.ERROR_MESSAGE);
-                        return;
+                int returnValue = fileChooser.showOpenDialog(frame);
+                if (returnValue == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+                    try {
+                        reactorsImporter = new DBReactorsImporter(selectedFile.getAbsolutePath());
+                        reactorsImporter.readReactorsInfo(reactorHolder);
+                        JOptionPane.showMessageDialog(null, "Данные считаные");
+                        reactorsImporter.getResult("Страна");
+                        countryButton.setEnabled(true);
+                        operatorButton.setEnabled(true);
+                        regionButton.setEnabled(true);
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(frame, "Ошибка: " + ex.getMessage(), "Внимание", JOptionPane.ERROR_MESSAGE);
                     }
-
-                    reactorsOwner.getReactorMap().clear();
-                    createImporterChain().processFile(file, reactorsOwner);
-                    updateTree();
-                    importBtn.setText("Файл: " + file.getName());
                 }
             }
         });
 
-        reactorsJTree.addMouseListener(new MouseAdapter() {
+        countryButton.addActionListener(new ActionListener() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                super.mouseClicked(e);
-                if (e.getClickCount() != 2) return;
-
-                TreePath selectionPath = reactorsJTree.getSelectionPath();
-                if (selectionPath == null) return;
-
-                DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) selectionPath.getLastPathComponent();
-                String nodeText = selectedNode.getUserObject().toString();
-                if ("Реакторы".equals(nodeText)) return;
-
-                Reactor selectedReactor =
-
-                        (Reactor) selectedNode.getUserObject();
-                JOptionPane.showMessageDialog(
-                        null,
-                        selectedReactor.getDetailedDescription(),
-                        "Подробности об реакторе",
-                        JOptionPane.INFORMATION_MESSAGE);
+            public void actionPerformed(ActionEvent e) {
+                HashMap<String, HashMap<Integer, Double>> agregatePerCountryMap = null;
+                try {
+                    agregatePerCountryMap = reactorsImporter.getResult("Страна");
+                } catch (SQLException | ClassNotFoundException ex) {
+                    throw new RuntimeException(ex);
+                }
+                String[] columnNames = {"Страна", "Год", "Объем ежегодного потребеления"};
+                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+                for (HashMap.Entry<String, HashMap<Integer, Double>> entry : agregatePerCountryMap.entrySet()) {
+                    String country = entry.getKey();
+                    HashMap<Integer, Double> yearData = entry.getValue();
+                    for (int year = 2014; year <= 2024; year++) {
+                        Object[] rowData = new Object[3];
+                        rowData[0] = country;
+                        rowData[1] = year;
+                        rowData[2] = yearData.getOrDefault(year, 0.0);
+                        model.addRow(rowData);
+                    }
+                }
+                JTable table = new JTable(model);
+                JScrollPane scrollPane = new JScrollPane(table);
+                JFrame tableFrame = new JFrame("Суммарное потребление по уровню агрегации: страна");
+                tableFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                tableFrame.setSize(800, 600);
+                tableFrame.add(scrollPane);
+                tableFrame.setLocationRelativeTo(null);
+                tableFrame.setVisible(true);
             }
         });
-    }
+        operatorButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                HashMap<String, HashMap<Integer, Double>> agregatePerCountryMap = null;
+                try {
+                    agregatePerCountryMap = reactorsImporter.getResult("Компания");
+                } catch (SQLException | ClassNotFoundException ex) {
+                    throw new RuntimeException(ex);
+                }
+                String[] columnNames = {"Оператор", "Год", "Объем ежегодного потребеления"};
+                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+                for (HashMap.Entry<String, HashMap<Integer, Double>> entry : agregatePerCountryMap.entrySet()) {
+                    String country = entry.getKey();
+                    HashMap<Integer, Double> yearData = entry.getValue();
+                    for (int year = 2014; year <= 2024; year++) {
+                        Object[] rowData = new Object[3];
+                        rowData[0] = country;
+                        rowData[1] = year;
+                        rowData[2] = yearData.getOrDefault(year, 0.0);
+                        model.addRow(rowData);
+                    }
+                }
+                JTable table = new JTable(model);
+                JScrollPane scrollPane = new JScrollPane(table);
+                JFrame tableFrame = new JFrame("Суммарное потребление по уровню агрегации: оператор");
+                tableFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                tableFrame.setSize(800, 600);
+                tableFrame.add(scrollPane);
+                tableFrame.setLocationRelativeTo(null);
+                tableFrame.setVisible(true);
+            }
+        });
 
-    private void updateTree() {
-        DefaultTreeModel treeModel = (DefaultTreeModel) reactorsJTree.getModel();
-        DefaultMutableTreeNode root = new DefaultMutableTreeNode("Реакторы");
-
-        for (String type : reactorsOwner.getReactorMap().keySet()) {
-            DefaultMutableTreeNode reactorNode = new DefaultMutableTreeNode(reactorsOwner.getReactorMap().get(type));
-            root.add(reactorNode);
-        }
-
-        treeModel.setRoot(root);
-        reactorsJTree.setEnabled(true);
+        regionButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                HashMap<String, HashMap<Integer, Double>> agregatePerCountryMap = null;
+                try {
+                    agregatePerCountryMap = reactorsImporter.getResult("Регион");
+                } catch (SQLException | ClassNotFoundException ex) {
+                    throw new RuntimeException(ex);
+                }
+                String[] columnNames = {"Регион", "Год", "Объём ежегодного потребеления"};
+                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+                for (HashMap.Entry<String, HashMap<Integer, Double>> entry : agregatePerCountryMap.entrySet()) {
+                    String country = entry.getKey();
+                    HashMap<Integer, Double> yearData = entry.getValue();
+                    for (int year = 2014; year <= 2024; year++) {
+                        Object[] rowData = new Object[3];
+                        rowData[0] = country;
+                        rowData[1] = year;
+                        rowData[2] = yearData.getOrDefault(year, 0.0);
+                        model.addRow(rowData);
+                    }
+                }
+                JTable table = new JTable(model);
+                JScrollPane scrollPane = new JScrollPane(table);
+                JFrame tableFrame = new JFrame("Суммарное потребление по уровню агрегации: регион");
+                tableFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                tableFrame.setSize(800, 600);
+                tableFrame.add(scrollPane);
+                tableFrame.setLocationRelativeTo(null);
+                tableFrame.setVisible(true);
+            }
+        });
+        panel.add(selectFileButton);
+        panel.add(countryButton);
+        panel.add(operatorButton);
+        panel.add(regionButton);
+        frame.getContentPane().add(panel);
+        frame.setSize(300, 200);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
     }
 }
