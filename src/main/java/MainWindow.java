@@ -9,6 +9,7 @@ import javax.swing.table.DefaultTableModel;
 import java.io.File;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,13 +20,13 @@ public class MainWindow {
     private DBReactorsImporter reactorsImporter = null;
 
     public void ShowFrame() throws URISyntaxException, ClassNotFoundException {
-        JFrame frame = new JFrame("PRIS");
+        JFrame frame = new JFrame("Reactors");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         JPanel panel = new JPanel();
         JButton selectFileButton = new JButton("Выбрать файл");
-        JButton countryButton = new JButton("Агрегация по странам");
-        JButton operatorButton = new JButton("Агрегация по операторам");
-        JButton regionButton = new JButton("Агрегация по региона");
+        JButton countryButton = new JButton("Аггрегация по странам");
+        JButton operatorButton = new JButton("Аггрегация по операторам");
+        JButton regionButton = new JButton("Аггрегация по регионам");
         countryButton.setEnabled(false);
         operatorButton.setEnabled(false);
         regionButton.setEnabled(false);
@@ -47,7 +48,7 @@ public class MainWindow {
                     try {
                         reactorsImporter = new DBReactorsImporter(selectedFile.getAbsolutePath());
                         reactorsImporter.readReactorsInfo(reactorHolder);
-                        JOptionPane.showMessageDialog(null, "Данные считаные");
+                        JOptionPane.showMessageDialog(null, "Данные считаны");
                         reactorsImporter.getResult("Страна");
                         countryButton.setEnabled(true);
                         operatorButton.setEnabled(true);
@@ -68,12 +69,13 @@ public class MainWindow {
                 } catch (SQLException | ClassNotFoundException ex) {
                     throw new RuntimeException(ex);
                 }
-                String[] columnNames = {"Страна", "Год", "Объем ежегодного потребеления"};
+                String[] columnNames = {"Страна", "Год", "Объем ежегодного потребления"};
                 DefaultTableModel model = new DefaultTableModel(columnNames, 0);
                 for (HashMap.Entry<String, HashMap<Integer, Double>> entry : agregatePerCountryMap.entrySet()) {
                     String country = entry.getKey();
                     HashMap<Integer, Double> yearData = entry.getValue();
-                    for (int year = 2014; year <= 2024; year++) {
+                    int startYear = Collections.min(yearData.keySet());
+                    for (int year = startYear; year <= Collections.max(yearData.keySet()); year++) {
                         Object[] rowData = new Object[3];
                         rowData[0] = country;
                         rowData[1] = year;
@@ -83,7 +85,7 @@ public class MainWindow {
                 }
                 JTable table = new JTable(model);
                 JScrollPane scrollPane = new JScrollPane(table);
-                JFrame tableFrame = new JFrame("Суммарное потребление по уровню агрегации: страна");
+                JFrame tableFrame = new JFrame("Суммарное потребление по уровню аггрегации: страна");
                 tableFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                 tableFrame.setSize(800, 600);
                 tableFrame.add(scrollPane);
@@ -100,12 +102,13 @@ public class MainWindow {
                 } catch (SQLException | ClassNotFoundException ex) {
                     throw new RuntimeException(ex);
                 }
-                String[] columnNames = {"Оператор", "Год", "Объем ежегодного потребеления"};
+                String[] columnNames = {"Оператор", "Год", "Объем ежегодного потребления"};
                 DefaultTableModel model = new DefaultTableModel(columnNames, 0);
                 for (HashMap.Entry<String, HashMap<Integer, Double>> entry : agregatePerCountryMap.entrySet()) {
                     String country = entry.getKey();
                     HashMap<Integer, Double> yearData = entry.getValue();
-                    for (int year = 2014; year <= 2024; year++) {
+                    int startYear = Collections.min(yearData.keySet());
+                    for (int year = startYear; year <= Collections.max(yearData.keySet()); year++) {
                         Object[] rowData = new Object[3];
                         rowData[0] = country;
                         rowData[1] = year;
@@ -115,7 +118,7 @@ public class MainWindow {
                 }
                 JTable table = new JTable(model);
                 JScrollPane scrollPane = new JScrollPane(table);
-                JFrame tableFrame = new JFrame("Суммарное потребление по уровню агрегации: оператор");
+                JFrame tableFrame = new JFrame("Суммарное потребление по уровню аггрегации: оператор");
                 tableFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                 tableFrame.setSize(800, 600);
                 tableFrame.add(scrollPane);
@@ -133,12 +136,13 @@ public class MainWindow {
                 } catch (SQLException | ClassNotFoundException ex) {
                     throw new RuntimeException(ex);
                 }
-                String[] columnNames = {"Регион", "Год", "Объём ежегодного потребеления"};
+                String[] columnNames = {"Регион", "Год", "Объём ежегодного потребления"};
                 DefaultTableModel model = new DefaultTableModel(columnNames, 0);
                 for (HashMap.Entry<String, HashMap<Integer, Double>> entry : agregatePerCountryMap.entrySet()) {
                     String country = entry.getKey();
                     HashMap<Integer, Double> yearData = entry.getValue();
-                    for (int year = 2014; year <= 2024; year++) {
+                    int startYear = Collections.min(yearData.keySet());
+                    for (int year = startYear; year <= Collections.max(yearData.keySet()); year++) {
                         Object[] rowData = new Object[3];
                         rowData[0] = country;
                         rowData[1] = year;
@@ -148,7 +152,7 @@ public class MainWindow {
                 }
                 JTable table = new JTable(model);
                 JScrollPane scrollPane = new JScrollPane(table);
-                JFrame tableFrame = new JFrame("Суммарное потребление по уровню агрегации: регион");
+                JFrame tableFrame = new JFrame("Суммарное потребление по уровню аггрегации: регион");
                 tableFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                 tableFrame.setSize(800, 600);
                 tableFrame.add(scrollPane);
